@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: agrogestao-db
+    environment:
+      POSTGRES_DB: agrogestao
+      POSTGRES_USER: agro
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-agro_local}
+    ports: ["5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agro -d agrogestao"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+  backend:
+    build: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/agrogestao
+      SPRING_DATASOURCE_USERNAME: agro
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-agro_local}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-change-this-development-secret-to-a-long-random-value-12345}
+    ports: ["8080:8080"]
+    depends_on:
+      db: {condition: service_healthy}
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_URL: http://localhost:8080/api
+    ports: ["5173:5173"]
+    depends_on: [backend]
+volumes:
+  postgres_data:
